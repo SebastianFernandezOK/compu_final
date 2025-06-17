@@ -1,17 +1,36 @@
+"""
+En este proyecto, se detecta automáticamente el tipo de dirección IP (IPv4 o IPv6) y se crea el socket adecuado, permitiendo que el chat funcione en cualquier red moderna.
+"""
+
+"""
+Servidor de chat tipo Discord.
+Permite a múltiples clientes conectarse, crear y unirse a grupos, y enviar mensajes solo a los miembros de su grupo.
+Ahora soporta tanto IPv4 como IPv6, detectando el tipo de dirección IP indicada.
+"""
 import socket  # Módulo para comunicación de red
 import threading  # Módulo para concurrencia con hilos
 import argparse   # Módulo para parseo de argumentos
+import ipaddress  # <--- Import para detectar tipo de IP
 
-HOST = '127.0.0.1'  # Dirección IP local donde el servidor escuchará
-PORT = 12345        # Puerto donde el servidor aceptará conexiones
+# Dirección IP local donde el servidor escuchará
+HOST = '127.0.0.1'
+# Puerto donde el servidor aceptará conexiones
+PORT = 12345
 
-clients = []  # Lista global para guardar los sockets de los clientes conectados
-client_groups = {}  # Diccionario: socket -> nombre de grupo
-chat_groups = {}    # Diccionario: nombre de grupo -> lista de sockets
+# Lista global para guardar los sockets de los clientes conectados
+clients = []
+# Diccionario: socket -> nombre de grupo
+client_groups = {}
+# Diccionario: nombre de grupo -> lista de sockets
+chat_groups = {}
 
 def broadcast(message, group, sender_conn):
     """
     Envía el mensaje a todos los clientes del grupo excepto al remitente.
+    Args:
+        message (bytes): Mensaje a enviar.
+        group (str): Nombre del grupo.
+        sender_conn (socket): Socket del remitente.
     """
     for client in chat_groups.get(group, []):
         if client != sender_conn:
@@ -24,6 +43,9 @@ def handle_client(conn, addr):
     """
     Atiende a un cliente conectado.
     Procesa comandos para crear/unirse/listar/salir de grupos y reenvía mensajes solo a miembros del grupo.
+    Args:
+        conn (socket): Socket del cliente.
+        addr (tuple): Dirección del cliente.
     """
     print(f"[NUEVA CONEXIÓN] {addr} conectado.")
     grupo_actual = None
@@ -33,6 +55,7 @@ def handle_client(conn, addr):
             if not data:
                 break
             msg = data.decode().strip()
+            # Procesamiento de comandos
             if msg.startswith('/crear '):
                 nombre_grupo = msg[7:].strip()
                 if nombre_grupo in chat_groups:
@@ -89,7 +112,7 @@ def handle_client(conn, addr):
 def main():
     """
     Función principal del servidor.
-    Parsea argumentos, crea el socket, lo enlaza a la IP y puerto, y acepta conexiones entrantes.
+    Parsea argumentos, crea el socket (IPv4 o IPv6), lo enlaza a la IP y puerto, y acepta conexiones entrantes.
     Por cada cliente, crea un hilo para atenderlo.
     """
     parser = argparse.ArgumentParser(description='Servidor de chat tipo Discord')
@@ -99,7 +122,18 @@ def main():
     host = args.host
     port = args.port
 
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Crea el socket TCP
+    # Detecta si la IP es IPv4 o IPv6
+    try:
+        ip_obj = ipaddress.ip_address(host)
+        if ip_obj.version == 6:
+            family = socket.AF_INET6
+        else:
+            family = socket.AF_INET
+    except ValueError:
+        # Si no es una IP válida, asume IPv4 (por ejemplo, 'localhost')
+        family = socket.AF_INET
+
+    server = socket.socket(family, socket.SOCK_STREAM)  # Crea el socket TCP
     server.bind((host, port))  # Asocia el socket a la IP y puerto
     server.listen()  # Comienza a escuchar conexiones entrantes
     print(f"[ESCUCHANDO] Servidor en {host}:{port}")

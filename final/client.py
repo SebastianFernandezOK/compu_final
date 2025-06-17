@@ -1,15 +1,30 @@
+"""
+En este proyecto, se detecta automáticamente el tipo de dirección IP (IPv4 o IPv6) y se crea el socket adecuado, permitiendo que el chat funcione en cualquier red moderna.
+"""
+"""
+Cliente de chat tipo Discord (consola).
+Permite conectarse a un servidor, crear y unirse a grupos, y enviar mensajes a los miembros del grupo.
+Comandos disponibles:
+  /crear <grupo>   - Crea y se une a un grupo
+  /unir <grupo>    - Se une a un grupo existente
+  /listar          - Lista los grupos disponibles
+  /salir           - Sale del grupo actual
+  /ayuda           - Muestra esta ayuda
+  (Los mensajes normales se reenvían solo a los miembros del grupo)
+"""
 import socket  # Módulo para comunicación de red
 import threading  # Módulo para concurrencia
 import argparse   # Módulo para parseo de argumentos
+import ipaddress  # <--- Import para detectar tipo de IP
 
-HOST = '127.0.0.1'  # IP del servidor al que conectarse
-PORT = 12345        # Puerto del servidor
-
+# Mensaje de ayuda para mostrar los comandos disponibles
 AYUDA = '''\nComandos disponibles:\n  /crear <grupo>   - Crea y se une a un grupo\n  /unir <grupo>    - Se une a un grupo existente\n  /listar          - Lista los grupos disponibles\n  /salir           - Sale del grupo actual\n  /ayuda           - Muestra esta ayuda\n  (Escribe un mensaje para enviarlo al grupo)\n'''
 
 def recibir_mensajes(sock):
     """
     Hilo que recibe mensajes del servidor y los muestra por pantalla.
+    Args:
+        sock (socket): Socket conectado al servidor.
     """
     while True:
         try:
@@ -23,6 +38,8 @@ def recibir_mensajes(sock):
 def main():
     """
     Cliente que se conecta al servidor, envía mensajes y comandos, y recibe mensajes de otros clientes.
+    Parsea argumentos de línea de comandos para host, puerto y usuario.
+    Soporta tanto IPv4 como IPv6.
     """
     parser = argparse.ArgumentParser(description='Cliente de chat tipo Discord')
     parser.add_argument('--host', default='127.0.0.1', help='IP del servidor (default: 127.0.0.1)')
@@ -33,7 +50,18 @@ def main():
     port = args.port
     usuario = args.usuario
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    # Detecta si la IP es IPv4 o IPv6
+    try:
+        ip_obj = ipaddress.ip_address(host)
+        if ip_obj.version == 6:
+            family = socket.AF_INET6
+        else:
+            family = socket.AF_INET
+    except ValueError:
+        # Si no es una IP válida, asume IPv4 (por ejemplo, 'localhost')
+        family = socket.AF_INET
+
+    with socket.socket(family, socket.SOCK_STREAM) as s:
         s.connect((host, port))  # Conecta al servidor
         print(f"Conectado al servidor {host}:{port}")
         print(AYUDA)
