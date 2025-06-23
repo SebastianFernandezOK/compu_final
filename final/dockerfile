@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+
+WORKDIR /final
+
+# Copia todo el código al contenedor
+COPY . .
+
+# Instala dependencias si las tienes (por ejemplo, requirements.txt)
+# RUN pip install -r requirements.txt
+
+# Expone ambos puertos usados por el servidor
+EXPOSE 5000
+EXPOSE 5001
+
+# Comando para ejecutar el servidor (los argumentos se pasan desde docker-compose)
+CMD ["python", "server.py"]

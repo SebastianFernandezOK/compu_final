@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  servidor:
+    build:
+      context: .
+      dockerfile: dockerfile
+    ports:
+      - "5000:5000"  # Puerto para IPv4
+      - "5001:5001"  # Puerto para IPv6
+    container_name: chat-servidor
+    restart: unless-stopped
+    working_dir: /final
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+    command: ["python", "server.py", "--port", "5000", "--port6", "5001"]
